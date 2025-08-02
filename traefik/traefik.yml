@@ -22,3 +22,18 @@ providers:
   file:
     directory: /etc/traefik/dynamic
     watch: true
+
+# Let's Encrypt 인증서 자동 발급 설정 (운영 환경에서만 활성화)
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: ${ACME_EMAIL}
+      storage: /letsencrypt/acme.json
+      caServer: ${ACME_CA_SERVER}
+      # DNS Challenge - Cloudflare 사용
+      dnsChallenge:
+        provider: cloudflare
+        delayBeforeCheck: 0
+        resolvers:
+          - "1.1.1.1:53"
+          - "1.0.0.1:53"

@@ -8,10 +8,18 @@ services:
     ports:
       - "8080:80"
       - "8443:443"
+    environment:
+      # Cloudflare API credentials
+      - CF_API_EMAIL=${CF_API_EMAIL}
+      - CF_API_KEY=${CF_API_KEY}
+      # 또는 API Token 사용 시
+      # - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN}
+      # - CF_ZONE_API_TOKEN=${CF_ZONE_API_TOKEN}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
       - ./traefik/dynamic:/etc/traefik/dynamic:ro
+      - ./letsencrypt:/letsencrypt
     networks:
       - proxy
     labels:

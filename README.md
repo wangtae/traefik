@@ -107,8 +107,10 @@ networks:
 | 변수 | 설명 | 기본값 |
 |------|------|--------|
 | DOMAIN | 기본 도메인 | local |
-| ACME_EMAIL | Let's Encrypt 이메일 | admin@example.com |
-| ACME_CA_SERVER | Let's Encrypt 서버 | 스테이징 서버 |
+| ACME_EMAIL | Let's Encrypt 이메일 (운영용) | wangtae@gmail.com |
+| ACME_CA_SERVER | Let's Encrypt 서버 (운영용) | 운영 서버 |
+| CF_API_EMAIL | Cloudflare 이메일 (운영용) | wangtae@gmail.com |
+| CF_DNS_API_TOKEN | Cloudflare API 토큰 (운영용) | - |
 | LOG_LEVEL | 로그 레벨 | INFO |
 | TZ | 타임존 | Asia/Seoul |
 
@@ -217,6 +219,34 @@ sudo systemctl stop nginx
 3. `docker compose logs traefik`로 오류 확인
 4. Basic 인증 자격 증명 확인
 
+## SSL 인증서 자동 발급 (Let's Encrypt + Cloudflare)
+
+Traefik은 Cloudflare DNS Challenge를 통해 Let's Encrypt SSL 인증서를 자동으로 발급하고 갱신합니다.
+
+### 빠른 설정
+
+1. **Cloudflare API Token 발급**
+   - [Cloudflare Dashboard](https://dash.cloudflare.com) → API Tokens
+   - "Edit zone DNS" 템플릿으로 토큰 생성
+
+2. **환경 변수 설정**
+   ```bash
+   # .env.prod 편집
+   CF_API_EMAIL=your-email@example.com
+   CF_DNS_API_TOKEN=your_api_token_here
+   ```
+
+3. **프로젝트에 SSL 적용**
+   ```yaml
+   labels:
+     - "traefik.http.routers.app-secure.rule=Host(`app.yourdomain.com`)"
+     - "traefik.http.routers.app-secure.entrypoints=websecure"
+     - "traefik.http.routers.app-secure.tls=true"
+     - "traefik.http.routers.app-secure.tls.certresolver=letsencrypt"
+   ```
+
+자세한 설정은 [SSL 인증서 가이드](docs/ssl-certificate-example.md) 참고
+
 ## 보안 권장사항
 
 1. **대시보드 비밀번호 변경**
@@ -236,6 +266,10 @@ sudo systemctl stop nginx
    ```bash
    # logrotate 설정 추가 권장
    ```
+
+4. **API 토큰 보안**
+   - Cloudflare API 토큰은 최소 권한 원칙 적용
+   - 환경 변수는 GPG로 암호화하여 저장
 
 ## 환경별 설정 관리
 
