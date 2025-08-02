@@ -76,8 +76,8 @@ up: check-env network
 	@$(DOCKER_COMPOSE) up -d
 	@echo "$(GREEN)✓ Traefik가 시작되었습니다$(NC)"
 	@echo ""
-	@echo "대시보드: http://traefik.local:8080"
-	@echo "기본 인증: admin / traefik"
+	@echo "대시보드: http://traefik.local/dashboard/"
+	@echo "인증 정보는 .env 파일 참조"
 
 ## 컨테이너 중지
 down:

@@ -1,0 +1,6 @@
+http:
+  middlewares:
+    traefik-auth:
+      basicAuth:
+        users:
+          - "wangtae@gmail.com:$apr1$zXSA3GYT$rEkQ85VWQjnO355rr/eTA/"

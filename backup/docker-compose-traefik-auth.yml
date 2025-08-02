@@ -1,0 +1,69 @@
+services:
+  traefik:
+    image: traefik:v3.0
+    container_name: traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command:
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--log.level=INFO"
+    labels:
+      - "traefik.enable=true"
+      # 대시보드 라우터
+      - "traefik.http.routers.dashboard.rule=Host(`localhost`) && (PathPrefix(`/dashboard`) || PathPrefix(`/api`))"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.middlewares=auth@docker"
+      - "traefik.http.routers.dashboard.entrypoints=web"
+    networks:
+      - traefik
+
+  # thomseddon/traefik-forward-auth - 간단한 웹 인증 솔루션
+  auth:
+    image: thomseddon/traefik-forward-auth:2
+    container_name: traefik-auth
+    restart: unless-stopped
+    environment:
+      # 기본 설정
+      - DEFAULT_PROVIDER=generic-oauth
+      - PROVIDERS_GENERIC_OAUTH_AUTH_URL=http://localhost/login
+      - PROVIDERS_GENERIC_OAUTH_TOKEN_URL=http://localhost/token
+      - PROVIDERS_GENERIC_OAUTH_USER_URL=http://localhost/user
+      - PROVIDERS_GENERIC_OAUTH_CLIENT_ID=traefik
+      - PROVIDERS_GENERIC_OAUTH_CLIENT_SECRET=secret
+      - SECRET=something-random
+      
+      # 쿠키 설정
+      - COOKIE_DOMAIN=localhost
+      - INSECURE_COOKIE=true  # HTTP용 (개발)
+      - AUTH_HOST=auth.localhost
+      - URL_PATH=/auth
+      
+      # 로그
+      - LOG_LEVEL=debug
+    labels:
+      - "traefik.enable=true"
+      # Auth 서비스 라우터
+      - "traefik.http.routers.auth.rule=Host(`auth.localhost`)"
+      - "traefik.http.routers.auth.service=auth"
+      - "traefik.http.routers.auth.entrypoints=web"
+      - "traefik.http.services.auth.loadbalancer.server.port=4181"
+      
+      # ForwardAuth 미들웨어
+      - "traefik.http.middlewares.auth.forwardauth.address=http://auth:4181"
+      - "traefik.http.middlewares.auth.forwardauth.trustForwardHeader=true"
+      - "traefik.http.middlewares.auth.forwardauth.authResponseHeaders=X-Forwarded-User"
+    networks:
+      - traefik
+
+networks:
+  traefik:
+    name: traefik
+    driver: bridge

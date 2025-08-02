@@ -49,3 +49,11 @@ config/certs/
 
 # Backup files created by Makefile
 backups/
+
+# Authelia data
+authelia/redis-data/
+authelia/secrets/
+authelia/users_database.yml
+
+# htpasswd files (contains credentials)
+traefik/auth/

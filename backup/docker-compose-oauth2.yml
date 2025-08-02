@@ -1,0 +1,74 @@
+services:
+  traefik:
+    image: traefik:v3.0
+    container_name: traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command:
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--log.level=INFO"
+    labels:
+      - "traefik.enable=true"
+      # 대시보드 라우터
+      - "traefik.http.routers.dashboard.rule=Host(`localhost`) && (PathPrefix(`/dashboard`) || PathPrefix(`/api`))"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.middlewares=oauth2-proxy@docker"
+      - "traefik.http.routers.dashboard.entrypoints=web"
+    networks:
+      - traefik
+
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.5.0
+    container_name: oauth2-proxy
+    restart: unless-stopped
+    environment:
+      # 기본 설정
+      - OAUTH2_PROXY_PROVIDER=github
+      - OAUTH2_PROXY_CLIENT_ID=${GITHUB_CLIENT_ID:-your-github-client-id}
+      - OAUTH2_PROXY_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-your-github-client-secret}
+      - OAUTH2_PROXY_COOKIE_SECRET=${COOKIE_SECRET:-$(openssl rand -hex 16)}
+      
+      # 리다이렉트 URL
+      - OAUTH2_PROXY_REDIRECT_URL=http://localhost/oauth2/callback
+      
+      # 프록시 설정
+      - OAUTH2_PROXY_UPSTREAMS=http://traefik
+      - OAUTH2_PROXY_HTTP_ADDRESS=0.0.0.0:4180
+      
+      # 쿠키 설정
+      - OAUTH2_PROXY_COOKIE_SECURE=false  # HTTP용 (개발)
+      - OAUTH2_PROXY_COOKIE_DOMAINS=.localhost
+      
+      # 이메일 도메인 (옵션)
+      - OAUTH2_PROXY_EMAIL_DOMAINS=*  # 모든 이메일 허용
+      
+      # 기타 설정
+      - OAUTH2_PROXY_PASS_ACCESS_TOKEN=true
+      - OAUTH2_PROXY_SKIP_PROVIDER_BUTTON=true
+    labels:
+      - "traefik.enable=true"
+      # OAuth2 Proxy 라우터
+      - "traefik.http.routers.oauth2-proxy.rule=Host(`localhost`) && PathPrefix(`/oauth2`)"
+      - "traefik.http.routers.oauth2-proxy.service=oauth2-proxy"
+      - "traefik.http.routers.oauth2-proxy.entrypoints=web"
+      - "traefik.http.services.oauth2-proxy.loadbalancer.server.port=4180"
+      
+      # ForwardAuth 미들웨어
+      - "traefik.http.middlewares.oauth2-proxy.forwardauth.address=http://oauth2-proxy:4180/oauth2/auth"
+      - "traefik.http.middlewares.oauth2-proxy.forwardauth.trustForwardHeader=true"
+      - "traefik.http.middlewares.oauth2-proxy.forwardauth.authResponseHeaders=X-Auth-Request-User,X-Auth-Request-Email"
+    networks:
+      - traefik
+
+networks:
+  traefik:
+    name: traefik
+    driver: bridge

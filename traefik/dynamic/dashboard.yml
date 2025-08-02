@@ -1,0 +1,16 @@
+http:
+  routers:
+    dashboard:
+      rule: Host(`traefik.local`)
+      service: api@internal
+      middlewares:
+        - traefik-auth
+        - dashboard-redirect
+      entryPoints:
+        - web
+  
+  middlewares:
+    dashboard-redirect:
+      redirectRegex:
+        regex: "^http://traefik.local:8080/$"
+        replacement: "http://traefik.local:8080/dashboard/"

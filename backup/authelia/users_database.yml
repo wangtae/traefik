@@ -1,0 +1,8 @@
+users:
+  admin:
+    displayname: "Administrator"
+    password: "$2a$12$KJoxNP7fJqDl9LcCBW9Gqu8xjLXXrV7RdTbZGcXr5YbPKJ4sCBFwK"
+    email: admin@example.com
+    groups:
+      - admins
+      - dev

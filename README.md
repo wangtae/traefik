@@ -42,8 +42,14 @@ make logs
 
 ### 3. 대시보드 접속
 
-- URL: https://traefik.local:8080
-- 계정: admin / traefik (기본값)
+- URL: http://traefik.local/dashboard/
+- 계정: admin / 새비밀번호 (.env 파일에서 설정한 비밀번호)
+- 주의: 브라우저에서 인증 팝업이 나타납니다
+
+**중요**: /etc/hosts에 다음 항목 추가 필요
+```
+127.0.0.1 traefik.local
+```
 
 ## 프로젝트 연동 방법
 

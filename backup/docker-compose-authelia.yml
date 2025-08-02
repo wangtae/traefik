@@ -1,0 +1,57 @@
+services:
+  traefik:
+    image: traefik:v3.0
+    container_name: traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./letsencrypt:/letsencrypt
+    command:
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--log.level=DEBUG"
+    labels:
+      - "traefik.enable=true"
+      # 대시보드 라우터
+      - "traefik.http.routers.dashboard.rule=Host(`localhost`) && (PathPrefix(`/dashboard`) || PathPrefix(`/api`))"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      #- "traefik.http.routers.dashboard.middlewares=authelia@docker"
+    networks:
+      - traefik
+
+  authelia:
+    image: authelia/authelia:4.37
+    container_name: authelia
+    restart: unless-stopped
+    volumes:
+      - ./authelia:/config
+    environment:
+      - TZ=Asia/Seoul
+    labels:
+      - "traefik.enable=true"
+      # Authelia 라우터
+      - "traefik.http.routers.authelia.rule=Host(`localhost`)"
+      - "traefik.http.routers.authelia.entrypoints=web"
+      - "traefik.http.services.authelia.loadbalancer.server.port=9091"
+      # Authelia 미들웨어
+      - "traefik.http.middlewares.authelia.forwardauth.address=http://authelia:9091/api/verify?rd=http://localhost"
+      - "traefik.http.middlewares.authelia.forwardauth.trustForwardHeader=true"
+      - "traefik.http.middlewares.authelia.forwardauth.authResponseHeaders=Remote-User,Remote-Groups,Remote-Name,Remote-Email"
+      # Authelia에 특별한 라우터 추가
+      - "traefik.http.routers.authelia-redirect.rule=HostRegexp(`{host:.+}`)"
+      - "traefik.http.routers.authelia-redirect.priority=10"
+    networks:
+      - traefik
+    depends_on:
+      - traefik
+
+networks:
+  traefik:
+    name: traefik
+    driver: bridge

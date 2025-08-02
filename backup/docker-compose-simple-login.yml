@@ -1,0 +1,46 @@
+services:
+  traefik:
+    image: traefik:v3.0
+    container_name: traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "8080:8080"  # 디버깅용
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./dynamic:/dynamic:ro
+    command:
+      - "--api.dashboard=true"
+      - "--api.insecure=true"  # 8080 포트 활성화
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.file.directory=/dynamic"
+      - "--providers.file.watch=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.traefik.address=:8080"
+      - "--log.level=INFO"
+    labels:
+      - "traefik.enable=true"
+    networks:
+      - traefik
+
+  # 간단한 로그인 페이지 (Nginx + HTML)
+  login-page:
+    image: nginx:alpine
+    container_name: login-page
+    restart: unless-stopped
+    volumes:
+      - ./login-page:/usr/share/nginx/html:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.login.rule=Host(`localhost`) && PathPrefix(`/login`)"
+      - "traefik.http.routers.login.service=login-page"
+      - "traefik.http.routers.login.entrypoints=web"
+      - "traefik.http.services.login-page.loadbalancer.server.port=80"
+    networks:
+      - traefik
+
+networks:
+  traefik:
+    name: traefik
+    driver: bridge

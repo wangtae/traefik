@@ -1,0 +1,15 @@
+http:
+  routers:
+    dashboard:
+      rule: "Host(`localhost`) && (PathPrefix(`/dashboard`) || PathPrefix(`/api`))"
+      service: api@internal
+      middlewares:
+        - dashboard-auth
+      entryPoints:
+        - web
+  
+  middlewares:
+    dashboard-auth:
+      basicAuth:
+        users:
+          - "admin:$apr1$pIIuJGs2$Ki.Bhl.dNz1XPvB54noGJ1"  # admin:traefik123

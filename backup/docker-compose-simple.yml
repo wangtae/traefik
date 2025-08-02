@@ -1,0 +1,42 @@
+services:
+  traefik:
+    image: traefik:v3.0
+    container_name: traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      # 중요: htpasswd로 생성한 비밀번호에서 $ 문자를 $$로 이스케이프
+      - TRAEFIK_AUTH=admin:$$apr1$$pIIuJGs2$$Ki.Bhl.dNz1XPvB54noGJ1
+    command:
+      # API 활성화
+      - "--api.dashboard=true"
+      
+      # Docker 프로바이더
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      
+      # 엔트리포인트
+      - "--entrypoints.web.address=:80"
+      
+      # 로그 레벨
+      - "--log.level=DEBUG"
+    labels:
+      - "traefik.enable=true"
+      
+      # 대시보드 라우터
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.local`)"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.middlewares=dashboard-auth"
+      
+      # 인증 미들웨어
+      - "traefik.http.middlewares.dashboard-auth.basicauth.users=${TRAEFIK_AUTH}"
+    networks:
+      - traefik
+
+networks:
+  traefik:
+    name: traefik
+    driver: bridge

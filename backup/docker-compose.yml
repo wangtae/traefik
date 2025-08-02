@@ -1,0 +1,89 @@
+services:
+  traefik:
+    image: traefik:v3.0
+    container_name: traefik
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Docker 소켓 (읽기 전용)
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # SSL 인증서 저장
+      - ./letsencrypt:/letsencrypt
+      # 로그 파일
+      - ./logs:/logs
+    environment:
+      - TZ=Asia/Seoul
+      - DASHBOARD_AUTH=${DASHBOARD_AUTH}
+    command:
+      # API 및 대시보드
+      - "--api.dashboard=true"
+      - "--api.debug=true"
+      
+      # Ping (헬스체크용)
+      - "--ping=true"
+      
+      # Docker 프로바이더 설정
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=docker-network"
+      - "--providers.docker.watch=true"
+      
+      
+      # 엔트리포인트 설정
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      
+      # HTTP → HTTPS 자동 리다이렉트 (개발 환경에서는 비활성화)
+      # - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      # - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      # - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
+      
+      # Let's Encrypt 설정 (프로덕션용)
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:-admin@example.com}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      # 개발 환경에서는 스테이징 서버 사용
+      - "--certificatesresolvers.letsencrypt.acme.caserver=${ACME_CA_SERVER:-https://acme-staging-v02.api.letsencrypt.org/directory}"
+      
+      # 로깅 설정
+      - "--log.level=${LOG_LEVEL:-INFO}"
+      - "--log.filePath=/logs/traefik.log"
+      - "--log.format=json"
+      
+      # 액세스 로그
+      - "--accesslog=true"
+      - "--accesslog.filePath=/logs/access.log"
+      - "--accesslog.format=json"
+      - "--accesslog.bufferingsize=100"
+      
+      # 파일럿 (Traefik 사용 통계) 비활성화
+      - "--global.sendanonymoususage=false"
+    labels:
+      # 라우터 설정
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.local`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard`))"
+      - "traefik.http.routers.dashboard.entrypoints=web"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.middlewares=auth"
+      
+      # Basic Auth 미들웨어
+      - "traefik.http.middlewares.auth.basicauth.users=${DASHBOARD_AUTH}"
+      
+      # 서비스 설정 (api@internal은 자동으로 제공됨)
+    networks:
+      - docker-network
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+networks:
+  docker-network:
+    external: true

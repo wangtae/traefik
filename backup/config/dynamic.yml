@@ -1,0 +1,26 @@
+# Traefik Dynamic Configuration
+http:
+  routers:
+    # 대시보드 라우터
+    dashboard:
+      rule: "Host(`traefik.local`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard`))"
+      service: api@internal
+      entryPoints:
+        - web
+      middlewares:
+        - auth
+    
+    # 헬스체크용 라우터 (인증 없음)
+    ping:
+      rule: "Host(`traefik.local`) && Path(`/ping`)"
+      service: ping@internal
+      entryPoints:
+        - web
+  
+  middlewares:
+    # Basic Auth 미들웨어
+    auth:
+      basicAuth:
+        users:
+          # admin:traefik123
+          - "admin:$apr1$pIIuJGs2$Ki.Bhl.dNz1XPvB54noGJ1"
