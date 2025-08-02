@@ -292,38 +292,50 @@ make use-prod
 
 ## GPG를 통한 환경 변수 암호화
 
-환경 파일은 민감한 정보를 포함하므로 GPG로 암호화하여 Git에 저장합니다.
+환경 파일은 민감한 정보를 포함하므로 GPG 대칭키 암호화로 Git에 안전하게 저장합니다.
 
-### GPG 설정
+### 비밀번호 기반 암호화 (단순화)
 
-1. **GPG 키 생성** (이미 있다면 건너뛰기)
-   ```bash
-   gpg --gen-key
-   ```
+본 프로젝트는 GPG 키 생성 없이 **비밀번호만으로** 환경 파일을 암호화합니다.
 
-2. **키 확인**
-   ```bash
-   gpg --list-secret-keys
-   ```
+**장점:**
+- GPG 키 생성/관리 불필요
+- 팀원과 비밀번호만 공유하면 됨
+- 어느 환경에서도 복호화 가능
 
 ### 환경 변수 암호화/복호화
 
 ```bash
 # 현재 환경 파일 암호화 (ENV=dev 또는 ENV=prod)
 make encrypt ENV=dev
-make encrypt ENV=prod
+# 비밀번호 입력 프롬프트가 나타납니다
 
-# 모든 환경 파일 한번에 암호화
+# 모든 환경 파일 한번에 암호화  
 make encrypt-all
+# 모든 파일에 동일한 비밀번호 사용
 
 # 환경 파일 복호화
 make decrypt ENV=dev
-make decrypt ENV=prod
+# 암호화 시 사용한 비밀번호 입력
 
 # 직접 스크립트 사용
-./scripts/encrypt-env.sh -f .env.dev -o secrets/.env.dev.gpg -r your-email@example.com
+./scripts/encrypt-env.sh -f .env.dev -o secrets/.env.dev.gpg
 ./scripts/decrypt-env.sh -f secrets/.env.dev.gpg -o .env.dev
 ```
+
+### 비밀번호 관리 권장사항
+
+1. **강력한 비밀번호 사용**
+   - 최소 12자 이상
+   - 대/소문자, 숫자, 특수문자 혼합
+
+2. **비밀번호 공유**
+   - 안전한 채널로 팀원과 공유 (Signal, 1Password 등)
+   - 절대 Git commit에 포함하지 말 것
+
+3. **주기적 변경**
+   - 팀원 변동 시 비밀번호 변경
+   - 3-6개월마다 주기적 갱신
 
 ### 워크플로우
 

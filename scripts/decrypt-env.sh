@@ -66,6 +66,8 @@ fi
 
 # 복호화 수행
 echo -e "${YELLOW}복호화 중: $GPG_FILE -> $ENV_FILE${NC}"
+echo -e "${YELLOW}암호화 시 사용한 비밀번호를 입력하세요${NC}"
+
 if gpg --decrypt --output "$ENV_FILE" "$GPG_FILE"; then
     echo -e "${GREEN}✓ 복호화 완료: $ENV_FILE${NC}"
     
@@ -75,8 +77,8 @@ if gpg --decrypt --output "$ENV_FILE" "$GPG_FILE"; then
 else
     echo -e "${RED}✗ 복호화 실패${NC}"
     echo "가능한 원인:"
-    echo "  - GPG 키가 없거나 만료됨"
-    echo "  - 잘못된 패스프레이즈"
+    echo "  - 잘못된 비밀번호"
     echo "  - 파일이 손상됨"
+    echo "  - GPG가 제대로 설치되지 않음"
     exit 1
 fi

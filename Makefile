@@ -127,8 +127,8 @@ encrypt:
 		echo "$(RED)Error: .env.$(ENV) 파일이 없습니다$(NC)"; \
 		exit 1; \
 	fi
-	@read -p "GPG recipient (이메일 또는 키 ID): " recipient; \
-	./scripts/encrypt-env.sh -f ".env.$(ENV)" -o "$(SECRETS_DIR)/.env.$(ENV).gpg" -r "$$recipient"
+	@echo "$(YELLOW)비밀번호를 사용한 대칭키 암호화를 수행합니다$(NC)"
+	@./scripts/encrypt-env.sh -f ".env.$(ENV)" -o "$(SECRETS_DIR)/.env.$(ENV).gpg"
 
 ## 환경 파일 복호화
 decrypt:
@@ -140,11 +140,12 @@ decrypt:
 
 ## 모든 환경 파일 암호화
 encrypt-all:
-	@read -p "GPG recipient (이메일 또는 키 ID): " recipient; \
-	for env in dev prod; do \
+	@echo "$(YELLOW)모든 환경 파일을 비밀번호로 암호화합니다$(NC)"
+	@echo "$(YELLOW)모든 파일에 동일한 비밀번호가 사용됩니다$(NC)"
+	@for env in dev prod; do \
 		if [ -f ".env.$$env" ]; then \
 			echo "$(YELLOW)암호화: .env.$$env$(NC)"; \
-			./scripts/encrypt-env.sh -f ".env.$$env" -o "$(SECRETS_DIR)/.env.$$env.gpg" -r "$$recipient"; \
+			./scripts/encrypt-env.sh -f ".env.$$env" -o "$(SECRETS_DIR)/.env.$$env.gpg"; \
 		fi \
 	done
 
