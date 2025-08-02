@@ -24,4 +24,5 @@ services:
 
 networks:
   proxy:
-    name: proxy
+    name: docker-network
+    external: true

@@ -12,9 +12,10 @@ logs/
 
 # Environment files with sensitive data
 .env
-.env.*
+.env.dev
+.env.prod
+.env.local
 !.env.example
-!.env.gpg
 
 # OS generated files
 .DS_Store
@@ -46,6 +47,9 @@ volumes/
 config/private/
 config/ssl/
 config/certs/
+
+# Secrets directory (for GPG encrypted files)
+# Git will track the encrypted files in secrets/
 
 # Backup files created by Makefile
 backups/

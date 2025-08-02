@@ -237,9 +237,28 @@ sudo systemctl stop nginx
    # logrotate 설정 추가 권장
    ```
 
-## GPG를 통한 환경 변수 관리
+## 환경별 설정 관리
 
-`.env` 파일은 민감한 정보를 포함하므로 GPG로 암호화하여 Git에 저장합니다.
+개발(dev)과 운영(prod) 환경을 분리하여 관리합니다.
+
+### 환경 파일 구조
+- `.env.dev` - 개발 환경 설정
+- `.env.prod` - 운영 환경 설정  
+- `secrets/` - GPG로 암호화된 환경 파일
+- `.env` - 현재 활성화된 환경 (Git 제외)
+
+### 환경 전환
+```bash
+# 개발 환경 사용
+make use-dev
+
+# 운영 환경 사용
+make use-prod
+```
+
+## GPG를 통한 환경 변수 암호화
+
+환경 파일은 민감한 정보를 포함하므로 GPG로 암호화하여 Git에 저장합니다.
 
 ### GPG 설정
 
@@ -256,15 +275,20 @@ sudo systemctl stop nginx
 ### 환경 변수 암호화/복호화
 
 ```bash
-# .env 파일 암호화 (Git에 커밋하기 전)
-make encrypt
-# 또는
-./scripts/encrypt-env.sh -r your-email@example.com
+# 현재 환경 파일 암호화 (ENV=dev 또는 ENV=prod)
+make encrypt ENV=dev
+make encrypt ENV=prod
 
-# .env.gpg 파일 복호화 (클론 후 첫 실행 시)
-make decrypt
-# 또는
-./scripts/decrypt-env.sh
+# 모든 환경 파일 한번에 암호화
+make encrypt-all
+
+# 환경 파일 복호화
+make decrypt ENV=dev
+make decrypt ENV=prod
+
+# 직접 스크립트 사용
+./scripts/encrypt-env.sh -f .env.dev -o secrets/.env.dev.gpg -r your-email@example.com
+./scripts/decrypt-env.sh -f secrets/.env.dev.gpg -o .env.dev
 ```
 
 ### 워크플로우
@@ -273,20 +297,23 @@ make decrypt
    ```bash
    git clone https://github.com/wangtae/traefik.git
    cd traefik
-   make init  # 자동으로 .env.gpg 복호화 시도
+   make init  # 네트워크 생성 및 환경 설정
+   make decrypt ENV=dev  # 개발 환경 복호화
+   make use-dev  # 개발 환경 활성화
+   make up  # Traefik 시작
    ```
 
 2. **환경 변수 수정 후**
    ```bash
-   # .env 파일 수정
-   nano .env
+   # 환경 파일 수정
+   nano .env.dev
    
    # 암호화
-   make encrypt
+   make encrypt ENV=dev
    
    # Git에 커밋
-   git add .env.gpg
-   git commit -m "Update encrypted environment variables"
+   git add secrets/.env.dev.gpg
+   git commit -m "Update encrypted dev environment"
    git push
    ```
 

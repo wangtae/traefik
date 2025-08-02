@@ -1,13 +1,14 @@
 # Traefik Docker 관리 Makefile
-.PHONY: help up down restart logs ps clean encrypt decrypt init update backup restore network
+.PHONY: help up down restart logs ps clean encrypt decrypt init update backup restore network use-dev use-prod encrypt-all
 
 # 기본 변수
 DOCKER_COMPOSE = docker compose
 PROJECT_NAME = traefik
 ENV_FILE = .env
-GPG_FILE = .env.gpg
+SECRETS_DIR = secrets
 BACKUP_DIR = backups
 NETWORK_NAME = docker-network
+ENV ?= dev
 
 # 색상 정의
 GREEN = \033[0;32m
@@ -31,8 +32,11 @@ help:
 	@echo "  make ps         컨테이너 상태 확인"
 	@echo ""
 	@echo "$(YELLOW)환경 설정:$(NC)"
-	@echo "  make encrypt    .env 파일 암호화 (GPG)"
-	@echo "  make decrypt    .env 파일 복호화"
+	@echo "  make encrypt    현재 환경 파일 암호화 (GPG)"
+	@echo "  make decrypt    환경 파일 복호화"
+	@echo "  make use-dev    개발 환경 사용"
+	@echo "  make use-prod   운영 환경 사용"
+	@echo "  make encrypt-all 모든 환경 파일 암호화"
 	@echo ""
 	@echo "$(YELLOW)유지보수:$(NC)"
 	@echo "  make update     이미지 업데이트 및 재시작"
@@ -44,7 +48,7 @@ help:
 	@echo "  make network    Docker 네트워크 생성"
 
 ## 환경 초기화
-init: network decrypt
+init: network check-env
 	@echo "$(GREEN)✓ 환경 초기화 완료$(NC)"
 
 ## Docker 네트워크 생성
@@ -60,9 +64,12 @@ network:
 ## .env 파일 확인
 check-env:
 	@if [ ! -f "$(ENV_FILE)" ]; then \
-		if [ -f "$(GPG_FILE)" ]; then \
-			echo "$(YELLOW).env 파일이 없습니다. 복호화를 시도합니다...$(NC)"; \
-			$(MAKE) decrypt; \
+		if [ -f ".env.$(ENV)" ]; then \
+			echo "$(YELLOW).env 파일이 없습니다. $(ENV) 환경을 복사합니다...$(NC)"; \
+			cp ".env.$(ENV)" "$(ENV_FILE)"; \
+		elif [ -f "$(SECRETS_DIR)/.env.$(ENV).gpg" ]; then \
+			echo "$(YELLOW).env 파일이 없습니다. $(ENV) 환경을 복호화합니다...$(NC)"; \
+			./scripts/decrypt-env.sh -f "$(SECRETS_DIR)/.env.$(ENV).gpg" -o "$(ENV_FILE)"; \
 		else \
 			echo "$(YELLOW).env 파일이 없습니다. .env.example을 복사합니다...$(NC)"; \
 			cp .env.example $(ENV_FILE); \
@@ -76,8 +83,8 @@ up: check-env network
 	@$(DOCKER_COMPOSE) up -d
 	@echo "$(GREEN)✓ Traefik가 시작되었습니다$(NC)"
 	@echo ""
-	@echo "대시보드: http://traefik.local/dashboard/"
-	@echo "인증 정보는 .env 파일 참조"
+	@echo "대시보드: http://traefik.local:8080/dashboard/"
+	@echo "인증: wangtae@gmail.com / !wangtae@gmail.com@."
 
 ## 컨테이너 중지
 down:
@@ -114,22 +121,42 @@ clean:
 	@find . -name "*.tmp" -o -name "*.swp" -o -name "*~" | xargs -r rm -f
 	@echo "$(GREEN)✓ 정리 완료$(NC)"
 
-## .env 파일 암호화
+## 현재 환경 파일 암호화
 encrypt:
-	@if [ ! -f "$(ENV_FILE)" ]; then \
-		echo "$(RED)Error: .env 파일이 없습니다$(NC)"; \
+	@if [ ! -f ".env.$(ENV)" ]; then \
+		echo "$(RED)Error: .env.$(ENV) 파일이 없습니다$(NC)"; \
 		exit 1; \
 	fi
 	@read -p "GPG recipient (이메일 또는 키 ID): " recipient; \
-	./scripts/encrypt-env.sh -r "$$recipient"
+	./scripts/encrypt-env.sh -f ".env.$(ENV)" -o "$(SECRETS_DIR)/.env.$(ENV).gpg" -r "$$recipient"
 
-## .env 파일 복호화
+## 환경 파일 복호화
 decrypt:
-	@if [ ! -f "$(GPG_FILE)" ]; then \
-		echo "$(YELLOW)경고: .env.gpg 파일이 없습니다$(NC)"; \
+	@if [ ! -f "$(SECRETS_DIR)/.env.$(ENV).gpg" ]; then \
+		echo "$(YELLOW)경고: $(SECRETS_DIR)/.env.$(ENV).gpg 파일이 없습니다$(NC)"; \
 		exit 0; \
 	fi
-	@./scripts/decrypt-env.sh
+	@./scripts/decrypt-env.sh -f "$(SECRETS_DIR)/.env.$(ENV).gpg" -o ".env.$(ENV)"
+
+## 모든 환경 파일 암호화
+encrypt-all:
+	@read -p "GPG recipient (이메일 또는 키 ID): " recipient; \
+	for env in dev prod; do \
+		if [ -f ".env.$$env" ]; then \
+			echo "$(YELLOW)암호화: .env.$$env$(NC)"; \
+			./scripts/encrypt-env.sh -f ".env.$$env" -o "$(SECRETS_DIR)/.env.$$env.gpg" -r "$$recipient"; \
+		fi \
+	done
+
+## 개발 환경 사용
+use-dev:
+	@cp .env.dev .env
+	@echo "$(GREEN)✓ 개발 환경이 활성화되었습니다$(NC)"
+
+## 운영 환경 사용
+use-prod:
+	@cp .env.prod .env
+	@echo "$(GREEN)✓ 운영 환경이 활성화되었습니다$(NC)"
 
 ## 설정 백업
 backup:
