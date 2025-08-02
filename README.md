@@ -42,14 +42,16 @@ make logs
 
 ### 3. 대시보드 접속
 
-- URL: http://traefik.local/dashboard/
-- 계정: admin / 새비밀번호 (.env 파일에서 설정한 비밀번호)
-- 주의: 브라우저에서 인증 팝업이 나타납니다
+- URL: http://traefik.local:8080/dashboard/
+- 계정: wangtae@gmail.com / !wangtae@gmail.com@.
+- 주의: 브라우저에서 Basic 인증 팝업이 나타납니다
 
-**중요**: /etc/hosts에 다음 항목 추가 필요
-```
-127.0.0.1 traefik.local
-```
+**중요**: 
+1. /etc/hosts에 다음 항목 추가 필요
+   ```
+   127.0.0.1 traefik.local
+   ```
+2. 포트가 8080으로 변경됨 (호스트 nginx와 충돌 방지)
 
 ## 프로젝트 연동 방법
 
@@ -104,11 +106,13 @@ networks:
 
 | 변수 | 설명 | 기본값 |
 |------|------|--------|
-| BASE_DOMAIN | 기본 도메인 | local |
+| DOMAIN | 기본 도메인 | local |
 | ACME_EMAIL | Let's Encrypt 이메일 | admin@example.com |
 | ACME_CA_SERVER | Let's Encrypt 서버 | 스테이징 서버 |
-| DASHBOARD_AUTH | 대시보드 인증 | admin:traefik |
 | LOG_LEVEL | 로그 레벨 | INFO |
+| TZ | 타임존 | Asia/Seoul |
+
+**참고**: 대시보드 인증은 `traefik/dynamic/basicauth.yml`에서 관리됩니다.
 
 ## 파일 구조
 
@@ -122,12 +126,17 @@ traefik/
 ├── scripts/            # 유틸리티 스크립트
 │   ├── encrypt-env.sh  # 환경 변수 암호화
 │   └── decrypt-env.sh  # 환경 변수 복호화
-├── config/             # 정적 설정 (선택사항)
+├── traefik/            # Traefik 설정 파일
+│   ├── traefik.yml    # 메인 설정
+│   └── dynamic/       # 동적 설정
+│       ├── basicauth.yml  # Basic 인증 설정
+│       └── dashboard.yml  # 대시보드 라우팅
 ├── letsencrypt/        # SSL 인증서 저장
 ├── logs/               # 로그 파일
 │   ├── traefik.log    # 시스템 로그
 │   └── access.log     # 액세스 로그
-├── backups/           # 설정 백업 (Git 제외)
+├── backup/            # 이전 설정 백업
+├── docs/              # 추가 문서
 └── README.md          # 이 파일
 ```
 
@@ -200,21 +209,22 @@ sudo systemctl stop nginx
 
 ### 대시보드 접속 불가
 
-1. 방화벽에서 8080 포트 허용 확인
-2. `docker-compose logs traefik`로 오류 확인
-3. traefik.local을 /etc/hosts에 추가:
+1. traefik.local을 /etc/hosts에 추가:
    ```
    127.0.0.1 traefik.local
    ```
+2. 포트 8080으로 접속 (http://traefik.local:8080/)
+3. `docker compose logs traefik`로 오류 확인
+4. Basic 인증 자격 증명 확인
 
 ## 보안 권장사항
 
 1. **대시보드 비밀번호 변경**
-   ```bash
-   # 새 비밀번호 생성
-   echo $(htpasswd -nb admin 새비밀번호) | sed -e s/\\$/\\$\\$/g
-   # .env 파일의 DASHBOARD_AUTH 업데이트
-   ```
+   - `traefik/dynamic/basicauth.yml` 파일 편집
+   - htpasswd 명령어로 새 해시 생성:
+     ```bash
+     docker run --rm httpd:2.4-alpine htpasswd -nb '사용자명' '비밀번호'
+     ```
 
 2. **운영 환경에서는 대시보드 비활성화 고려**
    ```yaml
